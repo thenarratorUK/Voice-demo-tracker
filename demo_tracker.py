@@ -33,6 +33,9 @@ def load_docx(path):
 df = load_data()
 scripts = load_docx("voice_demo_scripts_mock.docx")
 
+# Sidebar navigation
+view_mode = st.sidebar.radio("View Mode", ["Card View", "Spreadsheet View"])
+
 # Progress tracker
 st.title("Voice Demo Tracker")
 total = len(df)
@@ -46,45 +49,39 @@ col2.metric("Recorded", f"{recorded_count}/{total}")
 col3.metric("Uploaded", f"{uploaded_count}/{total}")
 st.progress(recorded_count / total)
 
-# Persistent view toggle state
-if "view_full" not in st.session_state:
-    st.session_state.view_full = False
-st.session_state.view_full = st.checkbox("Show full spreadsheet", value=st.session_state.view_full)
-
-# Filters
-filtered_df = df.copy()
-with st.expander("Filter Demos"):
-    selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
-    selected_accent = st.multiselect("Accent", options=sorted(df["Accent"].unique()))
-    styles = sorted(set(df["Style 1"]).union(df["Style 2"]))
-    selected_styles = st.multiselect("Styles", options=styles)
-    selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
-    search = st.text_input("Search Upload Name or ID")
-
-    if selected_category:
-        filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
-    if selected_accent:
-        filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
-    if selected_styles:
-        filtered_df = filtered_df[
-            filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
-        ]
-    if selected_tags:
-        filtered_df = filtered_df[
-            filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
-        ]
-    if search:
-        filtered_df = filtered_df[
-            filtered_df["ID"].str.contains(search, case=False) |
-            filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
-        ]
-
-# Spreadsheet view
-if st.session_state.view_full:
-    st.subheader("Full Tracker Table (read-only)")
+# Spreadsheet View
+if view_mode == "Spreadsheet View":
+    st.subheader("Full Tracker Table")
     st.dataframe(df, use_container_width=True)
-else:
-    st.subheader("Card View (One at a Time)")
+
+# Card View
+elif view_mode == "Card View":
+    filtered_df = df.copy()
+    with st.expander("Filter Demos"):
+        selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
+        selected_accent = st.multiselect("Accent", options=sorted(df["Accent"].unique()))
+        styles = sorted(set(df["Style 1"]).union(df["Style 2"]))
+        selected_styles = st.multiselect("Styles", options=styles)
+        selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
+        search = st.text_input("Search Upload Name or ID")
+
+        if selected_category:
+            filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
+        if selected_accent:
+            filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
+        if selected_styles:
+            filtered_df = filtered_df[
+                filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
+            ]
+        if selected_tags:
+            filtered_df = filtered_df[
+                filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
+            ]
+        if search:
+            filtered_df = filtered_df[
+                filtered_df["ID"].str.contains(search, case=False) |
+                filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
+            ]
 
     if "card_index" not in st.session_state:
         st.session_state.card_index = 0
