@@ -140,7 +140,7 @@ elif st.session_state.page == "tracker":
     total = len(df)
     recorded_count = df["Recorded"].sum()
     written_count = df["Script Written"].sum()
-    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
+    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="view_mode_toggle")
 
     total = len(df)
 
@@ -165,7 +165,7 @@ elif st.session_state.page == "tracker":
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
 
-    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
+    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="view_mode_toggle")
 
     if view_mode == "Spreadsheet View":
         st.dataframe(df, use_container_width=True)
