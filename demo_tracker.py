@@ -27,14 +27,14 @@ def load_docx(path):
                 if run.italic:
                     text = f"<i>{text}</i>"
                 html_parts.append(text)
-            scripts[current_heading] += "<p>" + "".join(html_parts) + "</p>"
+            scripts[current_heading] += "<p>" + ''.join(html_parts) + "</p>"
     return scripts
 
-# Load CSV and DOCX
+# Load CSV and scripts
 df = load_data()
 scripts = load_docx("voice_demo_scripts_mock.docx")
 
-# --- Progress Bar ---
+# Progress tracker
 st.title("Voice Demo Tracker")
 total = len(df)
 recorded_count = df["Recorded"].sum()
@@ -45,14 +45,13 @@ col1, col2, col3 = st.columns(3)
 col1.metric("Scripts Written", f"{written_count}/{total}")
 col2.metric("Recorded", f"{recorded_count}/{total}")
 col3.metric("Uploaded", f"{uploaded_count}/{total}")
+st.progress(recorded_count / total)
 
-progress = int((recorded_count / total) * 100)
-st.progress(progress / 100)
-
-# --- View Toggle ---
+# View toggle
 view_full = st.checkbox("Show full spreadsheet", value=False)
 
-# --- Filters for Card View ---
+# Filtering options
+filtered_df = df.copy()
 if not view_full:
     with st.expander("Filter Cards"):
         selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
@@ -62,29 +61,33 @@ if not view_full:
         selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
         search = st.text_input("Search Upload Name or ID")
 
-    filtered_df = df.copy()
-    if selected_category:
-        filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
-    if selected_accent:
-        filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
-    if selected_styles:
-        filtered_df = filtered_df[
-            filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
-        ]
-    if selected_tags:
-        filtered_df = filtered_df[
-            filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
-        ]
-    if search:
-        filtered_df = filtered_df[
-            filtered_df["ID"].str.contains(search, case=False) |
-            filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
-        ]
+        if selected_category:
+            filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
+        if selected_accent:
+            filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
+        if selected_styles:
+            filtered_df = filtered_df[
+                filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
+            ]
+        if selected_tags:
+            filtered_df = filtered_df[
+                filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
+            ]
+        if search:
+            filtered_df = filtered_df[
+                filtered_df["ID"].str.contains(search, case=False) |
+                filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
+            ]
 
-    st.subheader("Demo Cards")
-    for _, row in filtered_df.iterrows():
-        with st.container():
-            st.markdown(f"### {row['Voice123 Upload Name']}")
+# Display full table if requested
+if view_full:
+    st.subheader("Full Tracker Table (read-only)")
+    st.dataframe(df, use_container_width=True)
+else:
+    st.subheader("Filtered Demos (Card View)")
+
+    for i, row in filtered_df.iterrows():
+        with st.expander(f"{row['Voice123 Upload Name']}"):
             st.markdown(f"**Accent:** {row['Accent']}  
 "
                         f"**Styles:** {row['Style 1']} + {row['Style 2']}  
@@ -94,19 +97,19 @@ if not view_full:
                         f"**Category:** {row['Category']}  
 "
                         f"**Script File:** {row['Script Filename']}")
+
+            # Interactive checkboxes
             col1, col2, col3 = st.columns(3)
-            with col1:
-                st.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}", disabled=True)
-            with col2:
-                st.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}", disabled=True)
-            with col3:
-                st.checkbox("Uploaded", value=row["Uploaded"], key=f"uploaded_{row['ID']}", disabled=True)
+            df.at[i, "Script Written"] = col1.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}")
+            df.at[i, "Recorded"] = col2.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}")
+            df.at[i, "Uploaded"] = col3.checkbox("Uploaded", value=row["Uploaded"], key=f"uploaded_{row['ID']}")
+
+            # Optional script preview
             if row["ID"] in scripts:
                 with st.expander("Show Script"):
                     st.markdown(scripts[row["ID"]], unsafe_allow_html=True)
-            st.markdown("---")
 
-# --- Spreadsheet View ---
-else:
-    st.subheader("Full Tracker Table")
-    st.dataframe(df, use_container_width=True)
+# Optional: export updated CSV if needed
+if st.button("Download updated CSV"):
+    df.to_csv("updated_voice_demo_tracker.csv", index=False)
+    st.success("Updated CSV saved!")
