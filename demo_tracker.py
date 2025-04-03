@@ -40,7 +40,7 @@ div.stButton > button:hover {
 }
 .download-button {
   background-color: var(--primary-color);
-  color: #ffffff;
+  color: #ffffff !important;
   border: none;
   padding: 0.75em 1.25em;
   border-radius: var(--border-radius);
@@ -118,19 +118,19 @@ def refresh():
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
     st.header("Upload Files")
-    # Only show "Load Saved Progress" if CSV exists and is non-empty
+    # Only show "Load Saved Progress" if a non-empty CSV exists
     if os.path.exists(DATA_FILE):
         try:
             df_test = pd.read_csv(DATA_FILE)
             if not df_test.empty:
-                if st.button("Load Saved Progress"):
+                if st.button("Load Saved Progress", key="load_progress"):
                     st.session_state.page = "tracker"
                     st.rerun()
-        except:
+        except Exception:
             pass
 
-    uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
-    uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"])
+    uploaded_csv = st.file_uploader("Upload CSV", type=["csv"], key="upload_csv")
+    uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"], key="upload_docx")
     if uploaded_csv is not None:
         with open(DATA_FILE, "wb") as f:
             f.write(uploaded_csv.read())
@@ -140,10 +140,13 @@ if st.session_state.page == "upload":
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
-    # No download buttons on Upload page.
-    if st.button("Next"):
-        st.session_state.page = "tracker"
-        st.rerun()
+    # Only show "Next" button if both files exist
+    if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
+        if st.button("Next", key="next_upload"):
+            st.session_state.page = "tracker"
+            st.rerun()
+    else:
+        st.warning("Please upload both CSV and DOCX files to continue.")
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
@@ -154,18 +157,13 @@ elif st.session_state.page == "tracker":
     df = pd.read_csv(DATA_FILE)
     scripts = load_docx(DOCX_FILE)
     
-    # Top Progress Tracker (counters recalc on each run)
+    # Top Progress Tracker: Only show the Recorded counter now.
     total = len(df)
     recorded_count = df["Recorded"].sum()
-    written_count = df["Script Written"].sum()
-    uploaded_count = df["Uploaded"].sum()
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Scripts Written", f"{written_count}/{total}")
-    col2.metric("Recorded", f"{recorded_count}/{total}")
-    col3.metric("Uploaded", f"{uploaded_count}/{total}")
+    st.metric("Recorded", f"{recorded_count}/{total}")
     st.progress(recorded_count / total)
     
-    # Unique view mode selection
+    # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
     
     if view_mode == "Spreadsheet View":
@@ -186,20 +184,23 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        # Single Recorded Toggle Button
+        # Toggle Recorded button
         if not row["Recorded"]:
             if st.button("Mark as Recorded", key=f"record_btn_{row.name}"):
                 df.at[row.name, "Recorded"] = True
                 df.to_csv(DATA_FILE, index=False)
                 refresh()
         else:
-            st.button("Recorded", key=f"recorded_btn_{row.name}", disabled=True)
-        
+            if st.button("Mark as Not Recorded", key=f"unrecord_btn_{row.name}"):
+                df.at[row.name, "Recorded"] = False
+                df.to_csv(DATA_FILE, index=False)
+                refresh()
+    
         st.markdown(
             f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
         )
-        
+    
         nav_left, nav_right = st.columns(2)
         with nav_left:
             if st.session_state.card_index > 0:
@@ -213,7 +214,7 @@ elif st.session_state.page == "tracker":
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
-    # Download button for CSV only (styled as a button)
+    # Download button for CSV only (styled as a button) at the bottom
     st.markdown("---")
     st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
     
