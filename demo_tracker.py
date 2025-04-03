@@ -197,7 +197,7 @@ elif st.session_state.page == "tracker":
                 refresh()
     
         st.markdown(
-            f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
+            f"<div class='script-box'>{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
         )
     
