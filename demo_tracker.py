@@ -33,10 +33,8 @@ def load_docx(path):
 df = load_data()
 scripts = load_docx("voice_demo_scripts_mock.docx")
 
-# Sidebar navigation
 view_mode = st.sidebar.radio("View Mode", ["Card View", "Spreadsheet View"])
 
-# Progress tracker
 st.title("Voice Demo Tracker")
 total = len(df)
 recorded_count = df["Recorded"].sum()
@@ -49,12 +47,10 @@ col2.metric("Recorded", f"{recorded_count}/{total}")
 col3.metric("Uploaded", f"{uploaded_count}/{total}")
 st.progress(recorded_count / total)
 
-# Spreadsheet View
 if view_mode == "Spreadsheet View":
     st.subheader("Full Tracker Table")
     st.dataframe(df, use_container_width=True)
 
-# Card View
 elif view_mode == "Card View":
     filtered_df = df.copy()
     with st.expander("Filter Demos"):
@@ -92,15 +88,20 @@ elif view_mode == "Card View":
     if len(filtered_df) > 0:
         row = filtered_df.iloc[st.session_state.card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
-        st.markdown(f"**Accent:** {row['Accent']}  
+
+        info_text = (
+            f"**Accent:** {row['Accent']}  
 "
-                    f"**Styles:** {row['Style 1']} + {row['Style 2']}  
+            f"**Styles:** {row['Style 1']} + {row['Style 2']}  
 "
-                    f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}  
+            f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}  
 "
-                    f"**Category:** {row['Category']}  
+            f"**Category:** {row['Category']}  
 "
-                    f"**Script File:** {row['Script Filename']}")
+            f"**Script File:** {row['Script Filename']}"
+        )
+        st.markdown(info_text)
+
         col1, col2, col3 = st.columns(3)
         df.at[row.name, "Script Written"] = col1.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}")
         df.at[row.name, "Recorded"] = col2.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}")
