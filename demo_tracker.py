@@ -1,14 +1,66 @@
+
 import streamlit as st
 import pandas as pd
 from docx import Document
-import re
+import os
+import base64
 
 st.set_page_config(page_title="Voice Demo Tracker", layout="wide")
 
-@st.cache_data
-def load_data():
-    return pd.read_csv("voice_demo_tracker_template.csv")
+# ---------- Custom CSS ----------
+st.markdown("""
+<style>
+:root {
+  --primary-color: #008080;
+  --primary-hover: #007070;
+  --background-color: #fdfdfd;
+  --text-color: #222222;
+  --card-background: #ffffff;
+  --card-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  --border-radius: 10px;
+  --font-family: 'Avenir', sans-serif;
+  --accent-color: #ff9900;
+}
+body {
+  background-color: var(--background-color);
+  font-family: var(--font-family);
+  color: var(--text-color);
+}
+div.stButton > button {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 0.75em 1.25em;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s;
+}
+div.stButton > button:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+}
+.metric-small div {
+  font-size: 0.8rem !important;
+}
+.info-block {
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+.script-box {
+  padding: 0.75rem;
+  margin: 0.5rem 0 1rem 0;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+}
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
+# ---------- Helper Functions ----------
 @st.cache_data
 def load_docx(path):
     doc = Document(path)
@@ -30,84 +82,99 @@ def load_docx(path):
             scripts[current_heading] += "<p>" + ''.join(html_parts) + "</p>"
     return scripts
 
-df = load_data()
-scripts = load_docx("voice_demo_scripts_mock.docx")
+def get_file_download_link(file_path, label):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    b64 = base64.b64encode(data).decode()
+    return f'<a href="data:file/txt;base64,{b64}" download="{os.path.basename(file_path)}">{label}</a>'
 
-view_mode = st.sidebar.radio("View Mode", ["Card View", "Spreadsheet View"])
+# ---------- File Paths ----------
+DATA_FILE = "voice_demo_tracker_template.csv"
+DOCX_FILE = "voice_demo_scripts_mock.docx"
 
-st.title("Voice Demo Tracker")
-total = len(df)
-recorded_count = df["Recorded"].sum()
-written_count = df["Script Written"].sum()
-uploaded_count = df["Uploaded"].sum()
+# ---------- Sidebar Navigation ----------
+page = st.sidebar.radio("Navigation", ["Upload Files", "Tracker"])
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Scripts Written", f"{written_count}/{total}")
-col2.metric("Recorded", f"{recorded_count}/{total}")
-col3.metric("Uploaded", f"{uploaded_count}/{total}")
-st.progress(recorded_count / total)
+# ---------- Upload Page ----------
+if page == "Upload Files":
+    st.header("Upload CSV and DOCX")
+    uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
+    uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"])
 
-if view_mode == "Spreadsheet View":
-    st.subheader("Full Tracker Table")
-    st.dataframe(df, use_container_width=True)
+    if uploaded_csv:
+        with open(DATA_FILE, "wb") as f:
+            f.write(uploaded_csv.read())
+        st.success("CSV uploaded and saved.")
 
-elif view_mode == "Card View":
-    filtered_df = df.copy()
-    with st.expander("Filter Demos"):
-        selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
-        selected_accent = st.multiselect("Accent", options=sorted(df["Accent"].unique()))
-        styles = sorted(set(df["Style 1"]).union(df["Style 2"]))
-        selected_styles = st.multiselect("Styles", options=styles)
-        selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
-        search = st.text_input("Search Upload Name or ID")
+    if uploaded_docx:
+        with open(DOCX_FILE, "wb") as f:
+            f.write(uploaded_docx.read())
+        st.success("DOCX uploaded and saved.")
 
-        if selected_category:
-            filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
-        if selected_accent:
-            filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
-        if selected_styles:
-            filtered_df = filtered_df[
-                filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
-            ]
-        if selected_tags:
-            filtered_df = filtered_df[
-                filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
-            ]
-        if search:
-            filtered_df = filtered_df[
-                filtered_df["ID"].str.contains(search, case=False) |
-                filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
-            ]
+    if os.path.exists(DATA_FILE):
+        st.markdown(get_file_download_link(DATA_FILE, "Download current CSV"), unsafe_allow_html=True)
+    if os.path.exists(DOCX_FILE):
+        st.markdown(get_file_download_link(DOCX_FILE, "Download current DOCX"), unsafe_allow_html=True)
 
-    if "card_index" not in st.session_state:
-        st.session_state.card_index = 0
+# ---------- Tracker Page ----------
+elif page == "Tracker":
+    if not os.path.exists(DATA_FILE) or not os.path.exists(DOCX_FILE):
+        st.error("Missing CSV or DOCX file.")
+        st.stop()
 
-    if st.session_state.card_index >= len(filtered_df):
-        st.session_state.card_index = 0
+    df = pd.read_csv(DATA_FILE)
+    scripts = load_docx(DOCX_FILE)
 
-    if len(filtered_df) > 0:
+    total = len(df)
+    recorded_count = df["Recorded"].sum()
+    written_count = df["Script Written"].sum()
+    uploaded_count = df["Uploaded"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Scripts Written", f"{written_count}/{total}")
+    col2.metric("Recorded", f"{recorded_count}/{total}")
+    col3.metric("Uploaded", f"{uploaded_count}/{total}")
+    st.progress(recorded_count / total)
+
+    view_mode = st.sidebar.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
+
+    if view_mode == "Spreadsheet View":
+        st.dataframe(df, use_container_width=True)
+    else:
+        if "card_index" not in st.session_state:
+            st.session_state.card_index = 0
+        filtered_df = df
+
+        if st.session_state.card_index >= len(filtered_df):
+            st.session_state.card_index = 0
+
         row = filtered_df.iloc[st.session_state.card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
 
-        info_text = (
-            f"**Accent:** {row['Accent']}\n"
-            f"**Styles:** {row['Style 1']} + {row['Style 2']}\n"
-            f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}\n"
-            f"**Category:** {row['Category']}\n"
-            f"**Script File:** {row['Script Filename']}"
+        st.markdown(
+            f"<div class='info-block'><b>Accent:</b> {row['Accent']}<br>"
+            f"<b>Styles:</b> {row['Style 1']} + {row['Style 2']}<br>"
+            f"<b>Tags:</b> {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}<br>"
+            f"<b>Category:</b> {row['Category']}<br>"
+            f"<b>Script File:</b> {row['Script Filename']}</div>",
+            unsafe_allow_html=True
         )
-        st.markdown(info_text)
 
         col1, col2, col3 = st.columns(3)
-        df.at[row.name, "Script Written"] = col1.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}")
-        df.at[row.name, "Recorded"] = col2.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}")
-        df.at[row.name, "Uploaded"] = col3.checkbox("Uploaded", value=row["Uploaded"], key=f"uploaded_{row['ID']}")
+        df.at[row.name, "Script Written"] = col1.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
+        df.at[row.name, "Recorded"] = col2.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
+        df.at[row.name, "Uploaded"] = col3.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
 
-        if row["ID"] in scripts:
-            with st.expander("Show Script"):
-                st.markdown(scripts[row["ID"]], unsafe_allow_html=True)
+        st.markdown(f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>", unsafe_allow_html=True)
 
-        if st.button("Next"):
-            st.session_state.card_index += 1
-    else:
-        st.info("No results match your filters.")
+        nav1, nav2 = st.columns(2)
+        with nav1:
+            if st.session_state.card_index > 0:
+                if st.button("Previous"):
+                    st.session_state.card_index -= 1
+        with nav2:
+            if st.session_state.card_index < len(filtered_df) - 1:
+                if st.button("Next"):
+                    st.session_state.card_index += 1
+
+        df.to_csv(DATA_FILE, index=False)
