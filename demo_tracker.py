@@ -123,7 +123,7 @@ if st.session_state.page == "upload":
 
     if st.button("Next"):
         st.session_state.page = "tracker"
-        st.experimental_rerun()
+        st.rerun()
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
