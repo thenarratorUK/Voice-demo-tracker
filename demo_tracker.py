@@ -107,6 +107,9 @@ if "page" not in st.session_state:
 
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
+    if st.button("Load Saved Progress"):
+        st.session_state.clear()
+        st.rerun()
     st.header("Upload Files")
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
     uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"])
@@ -127,9 +130,6 @@ if st.session_state.page == "upload":
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
-    if st.button("Load Saved Progress"):
-        st.session_state.clear()
-        st.rerun()
     if not os.path.exists(DATA_FILE) or not os.path.exists(DOCX_FILE):
         st.error("CSV or DOCX file not found.")
         st.stop()
@@ -141,6 +141,13 @@ elif st.session_state.page == "tracker":
     recorded_count = df["Recorded"].sum()
     written_count = df["Script Written"].sum()
     uploaded_count = df["Uploaded"].sum()
+
+    # Recalculate totals immediately after any checkbox updates
+    if "card_index" in st.session_state and view_mode == "Card View":
+        row = df.iloc[st.session_state.card_index]
+        uploaded_count = df["Uploaded"].sum()
+        recorded_count = df["Recorded"].sum()
+        written_count = df["Script Written"].sum()
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Scripts Written", f"{written_count}/{total}")
