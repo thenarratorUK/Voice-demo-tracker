@@ -90,14 +90,10 @@ elif view_mode == "Card View":
         st.markdown(f"### {row['Voice123 Upload Name']}")
 
         info_text = (
-            f"**Accent:** {row['Accent']}  
-"
-            f"**Styles:** {row['Style 1']} + {row['Style 2']}  
-"
-            f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}  
-"
-            f"**Category:** {row['Category']}  
-"
+            f"**Accent:** {row['Accent']}\n"
+            f"**Styles:** {row['Style 1']} + {row['Style 2']}\n"
+            f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}\n"
+            f"**Category:** {row['Category']}\n"
             f"**Script File:** {row['Script Filename']}"
         )
         st.markdown(info_text)
