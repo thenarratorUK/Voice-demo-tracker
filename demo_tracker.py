@@ -38,7 +38,6 @@ div.stButton > button:hover {
   background-color: var(--primary-hover);
   transform: translateY(-2px);
 }
-/* Adjust download-button to match st.button */
 .download-button {
   background-color: var(--primary-color);
   color: #ffffff;
@@ -46,7 +45,7 @@ div.stButton > button:hover {
   padding: 0.75em 1.25em;
   border-radius: var(--border-radius);
   cursor: pointer;
-  text-decoration: none;
+  text-decoration: none !important;
   font-weight: 500;
   display: inline-block;
   transition: background-color 0.3s ease, transform 0.2s;
@@ -112,10 +111,14 @@ DOCX_FILE = "voice_demo_scripts_mock.docx"
 if "page" not in st.session_state:
     st.session_state.page = "upload"
 
+# ---------- Refresh Function ----------
+def refresh():
+    st.rerun()
+
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
     st.header("Upload Files")
-    # Only show "Load Saved Progress" if CSV exists and has data
+    # Only show "Load Saved Progress" if CSV exists and is non-empty
     if os.path.exists(DATA_FILE):
         try:
             df_test = pd.read_csv(DATA_FILE)
@@ -137,7 +140,7 @@ if st.session_state.page == "upload":
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
-    # No download buttons on the Upload page.
+    # No download buttons on Upload page.
     if st.button("Next"):
         st.session_state.page = "tracker"
         st.rerun()
@@ -162,7 +165,7 @@ elif st.session_state.page == "tracker":
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
     
-    # View Mode selection with unique key
+    # Unique view mode selection
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
     
     if view_mode == "Spreadsheet View":
@@ -183,14 +186,20 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        colA, colB, colC = st.columns(3)
-        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
-        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
-        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
+        # Single Recorded Toggle Button
+        if not row["Recorded"]:
+            if st.button("Mark as Recorded", key=f"record_btn_{row.name}"):
+                df.at[row.name, "Recorded"] = True
+                df.to_csv(DATA_FILE, index=False)
+                refresh()
+        else:
+            st.button("Recorded", key=f"recorded_btn_{row.name}", disabled=True)
+        
         st.markdown(
             f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
         )
+        
         nav_left, nav_right = st.columns(2)
         with nav_left:
             if st.session_state.card_index > 0:
@@ -204,7 +213,7 @@ elif st.session_state.page == "tracker":
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
-    # Download buttons at the bottom (only CSV; DOCX removed)
+    # Download button for CSV only (styled as a button)
     st.markdown("---")
     st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
     
