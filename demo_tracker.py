@@ -38,16 +38,23 @@ div.stButton > button:hover {
   background-color: var(--primary-hover);
   transform: translateY(-2px);
 }
+/* Adjust download-button to match st.button */
 .download-button {
-  background-color: var(--accent-color);
-  color: white;
-  padding: 0.5em 1em;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 0.75em 1.25em;
   border-radius: var(--border-radius);
-  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+  transition: background-color 0.3s ease, transform 0.2s;
   margin-right: 10px;
+}
+.download-button:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
 }
 .metric-small div {
   font-size: 0.8rem !important;
@@ -101,10 +108,6 @@ def download_button(file_path, label):
 DATA_FILE = "voice_demo_tracker_template.csv"
 DOCX_FILE = "voice_demo_scripts_mock.docx"
 
-# ---------- Refresh Function for Checkbox Changes ----------
-def refresh():
-    st.rerun()
-
 # ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
@@ -112,7 +115,7 @@ if "page" not in st.session_state:
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
     st.header("Upload Files")
-    # Show "Load Saved Progress" only if a non-empty CSV exists
+    # Only show "Load Saved Progress" if CSV exists and has data
     if os.path.exists(DATA_FILE):
         try:
             df_test = pd.read_csv(DATA_FILE)
@@ -159,7 +162,7 @@ elif st.session_state.page == "tracker":
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
     
-    # Unique key for view mode radio
+    # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
     
     if view_mode == "Spreadsheet View":
@@ -167,7 +170,7 @@ elif st.session_state.page == "tracker":
     else:
         if "card_index" not in st.session_state:
             st.session_state.card_index = 0
-        filtered_df = df  # (You can add filtering here if desired)
+        filtered_df = df  # (Add filtering if desired)
         if st.session_state.card_index >= len(filtered_df):
             st.session_state.card_index = 0
         row = filtered_df.iloc[st.session_state.card_index]
@@ -181,9 +184,9 @@ elif st.session_state.page == "tracker":
             unsafe_allow_html=True
         )
         colA, colB, colC = st.columns(3)
-        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}", on_change=refresh)
-        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}", on_change=refresh)
-        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}", on_change=refresh)
+        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
+        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
+        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
         st.markdown(
             f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
@@ -201,15 +204,9 @@ elif st.session_state.page == "tracker":
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
-    # Download buttons (only on Tracker page, at bottom)
+    # Download buttons at the bottom (only CSV; DOCX removed)
     st.markdown("---")
-    down_col1, down_col2 = st.columns(2)
-    with down_col1:
-        if os.path.exists(DATA_FILE):
-            st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
-    with down_col2:
-        if os.path.exists(DOCX_FILE):
-            st.markdown(download_button(DOCX_FILE, "Download DOCX"), unsafe_allow_html=True)
+    st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
     
     # "Back to Upload" button
     if st.button("Back to Upload", key="back_upload"):
