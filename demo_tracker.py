@@ -140,14 +140,24 @@ elif st.session_state.page == "tracker":
     total = len(df)
     recorded_count = df["Recorded"].sum()
     written_count = df["Script Written"].sum()
-    uploaded_count = df["Uploaded"].sum()
+    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
 
-    # Recalculate totals immediately after any checkbox updates
-    if "card_index" in st.session_state and view_mode == "Card View":
-        row = df.iloc[st.session_state.card_index]
-        uploaded_count = df["Uploaded"].sum()
+    total = len(df)
+
+    if view_mode == "Card View" and "card_index" in st.session_state:
         recorded_count = df["Recorded"].sum()
         written_count = df["Script Written"].sum()
+        uploaded_count = df["Uploaded"].sum()
+    else:
+        recorded_count = df["Recorded"].sum()
+        written_count = df["Script Written"].sum()
+        uploaded_count = df["Uploaded"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Scripts Written", f"{written_count}/{total}")
+    col2.metric("Recorded", f"{recorded_count}/{total}")
+    col3.metric("Uploaded", f"{uploaded_count}/{total}")
+    st.progress(recorded_count / total)
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Scripts Written", f"{written_count}/{total}")
