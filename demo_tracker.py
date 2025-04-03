@@ -121,11 +121,6 @@ if st.session_state.page == "upload":
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
-    if os.path.exists(DATA_FILE):
-        st.markdown(download_button(DATA_FILE, "Download current CSV"), unsafe_allow_html=True)
-    if os.path.exists(DOCX_FILE):
-        st.markdown(download_button(DOCX_FILE, "Download current DOCX"), unsafe_allow_html=True)
-
     if st.button("Next"):
         st.session_state.page = "tracker"
         st.experimental_rerun()
@@ -191,10 +186,8 @@ elif st.session_state.page == "tracker":
                 if st.button("Next"):
                     st.session_state.card_index += 1
 
-        # Save updates
         df.to_csv(DATA_FILE, index=False)
 
-    # Download buttons at the bottom
     st.markdown("---")
     colA, colB = st.columns([1, 1])
     with colA:
