@@ -127,6 +127,9 @@ if st.session_state.page == "upload":
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
+    if st.button("Load Saved Progress"):
+        st.session_state.clear()
+        st.rerun()
     if not os.path.exists(DATA_FILE) or not os.path.exists(DOCX_FILE):
         st.error("CSV or DOCX file not found.")
         st.stop()
