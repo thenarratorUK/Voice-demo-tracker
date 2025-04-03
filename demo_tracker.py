@@ -39,6 +39,17 @@ div.stButton > button:hover {
   background-color: var(--primary-hover);
   transform: translateY(-2px);
 }
+.download-button {
+  background-color: var(--accent-color);
+  color: white;
+  padding: 0.5em 1em;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  margin-right: 10px;
+}
 .metric-small div {
   font-size: 0.8rem !important;
 }
@@ -82,22 +93,21 @@ def load_docx(path):
             scripts[current_heading] += "<p>" + ''.join(html_parts) + "</p>"
     return scripts
 
-def get_file_download_link(file_path, label):
+def download_button(file_path, label):
     with open(file_path, "rb") as f:
-        data = f.read()
-    b64 = base64.b64encode(data).decode()
-    return f'<a href="data:file/txt;base64,{b64}" download="{os.path.basename(file_path)}">{label}</a>'
+        b64 = base64.b64encode(f.read()).decode()
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(file_path)}" class="download-button">{label}</a>'
 
 # ---------- File Paths ----------
 DATA_FILE = "voice_demo_tracker_template.csv"
 DOCX_FILE = "voice_demo_scripts_mock.docx"
 
-# ---------- Sidebar Navigation ----------
-page = st.sidebar.radio("Navigation", ["Upload Files", "Tracker"])
+if "page" not in st.session_state:
+    st.session_state.page = "upload"
 
 # ---------- Upload Page ----------
-if page == "Upload Files":
-    st.header("Upload CSV and DOCX")
+if st.session_state.page == "upload":
+    st.header("Upload Files")
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
     uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"])
 
@@ -112,14 +122,18 @@ if page == "Upload Files":
         st.success("DOCX uploaded and saved.")
 
     if os.path.exists(DATA_FILE):
-        st.markdown(get_file_download_link(DATA_FILE, "Download current CSV"), unsafe_allow_html=True)
+        st.markdown(download_button(DATA_FILE, "Download current CSV"), unsafe_allow_html=True)
     if os.path.exists(DOCX_FILE):
-        st.markdown(get_file_download_link(DOCX_FILE, "Download current DOCX"), unsafe_allow_html=True)
+        st.markdown(download_button(DOCX_FILE, "Download current DOCX"), unsafe_allow_html=True)
+
+    if st.button("Next"):
+        st.session_state.page = "tracker"
+        st.experimental_rerun()
 
 # ---------- Tracker Page ----------
-elif page == "Tracker":
+elif st.session_state.page == "tracker":
     if not os.path.exists(DATA_FILE) or not os.path.exists(DOCX_FILE):
-        st.error("Missing CSV or DOCX file.")
+        st.error("CSV or DOCX file not found.")
         st.stop()
 
     df = pd.read_csv(DATA_FILE)
@@ -136,7 +150,7 @@ elif page == "Tracker":
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
 
-    view_mode = st.sidebar.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
+    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0)
 
     if view_mode == "Spreadsheet View":
         st.dataframe(df, use_container_width=True)
@@ -177,4 +191,15 @@ elif page == "Tracker":
                 if st.button("Next"):
                     st.session_state.card_index += 1
 
+        # Save updates
         df.to_csv(DATA_FILE, index=False)
+
+    # Download buttons at the bottom
+    st.markdown("---")
+    colA, colB = st.columns([1, 1])
+    with colA:
+        if os.path.exists(DATA_FILE):
+            st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
+    with colB:
+        if os.path.exists(DOCX_FILE):
+            st.markdown(download_button(DOCX_FILE, "Download DOCX"), unsafe_allow_html=True)
