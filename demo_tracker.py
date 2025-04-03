@@ -46,10 +46,12 @@ col2.metric("Recorded", f"{recorded_count}/{total}")
 col3.metric("Uploaded", f"{uploaded_count}/{total}")
 st.progress(recorded_count / total)
 
-# View toggle
-view_full = st.checkbox("Show full spreadsheet", value=False)
+# Persistent view toggle state
+if "view_full" not in st.session_state:
+    st.session_state.view_full = False
+st.session_state.view_full = st.checkbox("Show full spreadsheet", value=st.session_state.view_full)
 
-# Filter section
+# Filters
 filtered_df = df.copy()
 with st.expander("Filter Demos"):
     selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
@@ -77,19 +79,18 @@ with st.expander("Filter Demos"):
             filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
         ]
 
-# Show spreadsheet if toggled
-if view_full:
+# Spreadsheet view
+if st.session_state.view_full:
     st.subheader("Full Tracker Table (read-only)")
     st.dataframe(df, use_container_width=True)
 else:
-    # Single card navigation
     st.subheader("Card View (One at a Time)")
 
     if "card_index" not in st.session_state:
         st.session_state.card_index = 0
 
     if st.session_state.card_index >= len(filtered_df):
-        st.session_state.card_index = 0  # reset if out of bounds
+        st.session_state.card_index = 0
 
     if len(filtered_df) > 0:
         row = filtered_df.iloc[st.session_state.card_index]
