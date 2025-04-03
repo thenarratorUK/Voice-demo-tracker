@@ -30,7 +30,6 @@ def load_docx(path):
             scripts[current_heading] += "<p>" + ''.join(html_parts) + "</p>"
     return scripts
 
-# Load CSV and scripts
 df = load_data()
 scripts = load_docx("voice_demo_scripts_mock.docx")
 
@@ -50,66 +49,70 @@ st.progress(recorded_count / total)
 # View toggle
 view_full = st.checkbox("Show full spreadsheet", value=False)
 
-# Filtering options
+# Filter section
 filtered_df = df.copy()
-if not view_full:
-    with st.expander("Filter Cards"):
-        selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
-        selected_accent = st.multiselect("Accent", options=sorted(df["Accent"].unique()))
-        styles = sorted(set(df["Style 1"]).union(df["Style 2"]))
-        selected_styles = st.multiselect("Styles", options=styles)
-        selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
-        search = st.text_input("Search Upload Name or ID")
+with st.expander("Filter Demos"):
+    selected_category = st.multiselect("Category", options=sorted(df["Category"].unique()))
+    selected_accent = st.multiselect("Accent", options=sorted(df["Accent"].unique()))
+    styles = sorted(set(df["Style 1"]).union(df["Style 2"]))
+    selected_styles = st.multiselect("Styles", options=styles)
+    selected_tags = st.multiselect("Voice123 Tags", options=sorted(set(df["Voice123 Tag 1"]).union(df["Voice123 Tag 2"])))
+    search = st.text_input("Search Upload Name or ID")
 
-        if selected_category:
-            filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
-        if selected_accent:
-            filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
-        if selected_styles:
-            filtered_df = filtered_df[
-                filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
-            ]
-        if selected_tags:
-            filtered_df = filtered_df[
-                filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
-            ]
-        if search:
-            filtered_df = filtered_df[
-                filtered_df["ID"].str.contains(search, case=False) |
-                filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
-            ]
+    if selected_category:
+        filtered_df = filtered_df[filtered_df["Category"].isin(selected_category)]
+    if selected_accent:
+        filtered_df = filtered_df[filtered_df["Accent"].isin(selected_accent)]
+    if selected_styles:
+        filtered_df = filtered_df[
+            filtered_df["Style 1"].isin(selected_styles) | filtered_df["Style 2"].isin(selected_styles)
+        ]
+    if selected_tags:
+        filtered_df = filtered_df[
+            filtered_df["Voice123 Tag 1"].isin(selected_tags) | filtered_df["Voice123 Tag 2"].isin(selected_tags)
+        ]
+    if search:
+        filtered_df = filtered_df[
+            filtered_df["ID"].str.contains(search, case=False) |
+            filtered_df["Voice123 Upload Name"].str.contains(search, case=False)
+        ]
 
-# Display full table if requested
+# Show spreadsheet if toggled
 if view_full:
     st.subheader("Full Tracker Table (read-only)")
     st.dataframe(df, use_container_width=True)
 else:
-    st.subheader("Filtered Demos (Card View)")
+    # Single card navigation
+    st.subheader("Card View (One at a Time)")
 
-    for i, row in filtered_df.iterrows():
-        with st.expander(f"{row['Voice123 Upload Name']}"):
-            st.markdown(f"**Accent:** {row['Accent']}  
-"
-                        f"**Styles:** {row['Style 1']} + {row['Style 2']}  
-"
-                        f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}  
-"
-                        f"**Category:** {row['Category']}  
-"
-                        f"**Script File:** {row['Script Filename']}")
+    if "card_index" not in st.session_state:
+        st.session_state.card_index = 0
 
-            # Interactive checkboxes
-            col1, col2, col3 = st.columns(3)
-            df.at[i, "Script Written"] = col1.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}")
-            df.at[i, "Recorded"] = col2.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}")
-            df.at[i, "Uploaded"] = col3.checkbox("Uploaded", value=row["Uploaded"], key=f"uploaded_{row['ID']}")
+    if st.session_state.card_index >= len(filtered_df):
+        st.session_state.card_index = 0  # reset if out of bounds
 
-            # Optional script preview
-            if row["ID"] in scripts:
-                with st.expander("Show Script"):
-                    st.markdown(scripts[row["ID"]], unsafe_allow_html=True)
+    if len(filtered_df) > 0:
+        row = filtered_df.iloc[st.session_state.card_index]
+        st.markdown(f"### {row['Voice123 Upload Name']}")
+        st.markdown(f"**Accent:** {row['Accent']}  
+"
+                    f"**Styles:** {row['Style 1']} + {row['Style 2']}  
+"
+                    f"**Tags:** {row['Voice123 Tag 1']}, {row['Voice123 Tag 2']}  
+"
+                    f"**Category:** {row['Category']}  
+"
+                    f"**Script File:** {row['Script Filename']}")
+        col1, col2, col3 = st.columns(3)
+        df.at[row.name, "Script Written"] = col1.checkbox("Script Written", value=row["Script Written"], key=f"written_{row['ID']}")
+        df.at[row.name, "Recorded"] = col2.checkbox("Recorded", value=row["Recorded"], key=f"recorded_{row['ID']}")
+        df.at[row.name, "Uploaded"] = col3.checkbox("Uploaded", value=row["Uploaded"], key=f"uploaded_{row['ID']}")
 
-# Optional: export updated CSV if needed
-if st.button("Download updated CSV"):
-    df.to_csv("updated_voice_demo_tracker.csv", index=False)
-    st.success("Updated CSV saved!")
+        if row["ID"] in scripts:
+            with st.expander("Show Script"):
+                st.markdown(scripts[row["ID"]], unsafe_allow_html=True)
+
+        if st.button("Next"):
+            st.session_state.card_index += 1
+    else:
+        st.info("No results match your filters.")
