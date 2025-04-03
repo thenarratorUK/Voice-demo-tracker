@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from docx import Document
@@ -90,7 +89,7 @@ def load_docx(path):
                 if run.italic:
                     text = f"<i>{text}</i>"
                 html_parts.append(text)
-            scripts[current_heading] += "<p>" + ''.join(html_parts) + "</p>"
+            scripts[current_heading] += "<p>" + "".join(html_parts) + "</p>"
     return scripts
 
 def download_button(file_path, label):
@@ -102,28 +101,37 @@ def download_button(file_path, label):
 DATA_FILE = "voice_demo_tracker_template.csv"
 DOCX_FILE = "voice_demo_scripts_mock.docx"
 
+# ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
 
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
-    if st.button("Load Saved Progress"):
-        st.session_state.clear()
-        st.rerun()
     st.header("Upload Files")
+    # Show "Load Saved Progress" only if CSV exists and is non-empty
+    if os.path.exists(DATA_FILE):
+        try:
+            df_test = pd.read_csv(DATA_FILE)
+            if not df_test.empty:
+                if st.button("Load Saved Progress"):
+                    st.session_state.page = "tracker"
+                    st.session_state.clear()
+                    st.rerun()
+        except:
+            pass
+
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
     uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"])
-
-    if uploaded_csv:
+    if uploaded_csv is not None:
         with open(DATA_FILE, "wb") as f:
             f.write(uploaded_csv.read())
         st.success("CSV uploaded and saved.")
-
-    if uploaded_docx:
+    if uploaded_docx is not None:
         with open(DOCX_FILE, "wb") as f:
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
+    # No download buttons here.
     if st.button("Next"):
         st.session_state.page = "tracker"
         st.rerun()
@@ -131,55 +139,36 @@ if st.session_state.page == "upload":
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
     if not os.path.exists(DATA_FILE) or not os.path.exists(DOCX_FILE):
-        st.error("CSV or DOCX file not found.")
+        st.error("CSV or DOCX file not found. Please upload files first.")
         st.stop()
-
+    
     df = pd.read_csv(DATA_FILE)
     scripts = load_docx(DOCX_FILE)
-
+    
+    # Top Progress Tracker (small font)
     total = len(df)
     recorded_count = df["Recorded"].sum()
     written_count = df["Script Written"].sum()
-    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_toggle_4129")
-
-    total = len(df)
-
-    if view_mode == "Card View" and "card_index" in st.session_state:
-        recorded_count = df["Recorded"].sum()
-        written_count = df["Script Written"].sum()
-        uploaded_count = df["Uploaded"].sum()
-    else:
-        recorded_count = df["Recorded"].sum()
-        written_count = df["Script Written"].sum()
-        uploaded_count = df["Uploaded"].sum()
-
+    uploaded_count = df["Uploaded"].sum()
     col1, col2, col3 = st.columns(3)
     col1.metric("Scripts Written", f"{written_count}/{total}")
     col2.metric("Recorded", f"{recorded_count}/{total}")
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Scripts Written", f"{written_count}/{total}")
-    col2.metric("Recorded", f"{recorded_count}/{total}")
-    col3.metric("Uploaded", f"{uploaded_count}/{total}")
-    st.progress(recorded_count / total)
-
-    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_toggle_4129")
-
+    
+    # View Mode selection with a unique key
+    view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
+    
     if view_mode == "Spreadsheet View":
         st.dataframe(df, use_container_width=True)
     else:
         if "card_index" not in st.session_state:
             st.session_state.card_index = 0
-        filtered_df = df
-
+        filtered_df = df  # (You can add filters here if desired)
         if st.session_state.card_index >= len(filtered_df):
             st.session_state.card_index = 0
-
         row = filtered_df.iloc[st.session_state.card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
-
         st.markdown(
             f"<div class='info-block'><b>Accent:</b> {row['Accent']}<br>"
             f"<b>Styles:</b> {row['Style 1']} + {row['Style 2']}<br>"
@@ -188,31 +177,38 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-
-        col1, col2, col3 = st.columns(3)
-        df.at[row.name, "Script Written"] = col1.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
-        df.at[row.name, "Recorded"] = col2.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
-        df.at[row.name, "Uploaded"] = col3.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
-
-        st.markdown(f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>", unsafe_allow_html=True)
-
-        nav1, nav2 = st.columns(2)
-        with nav1:
+        colA, colB, colC = st.columns(3)
+        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
+        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
+        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
+        st.markdown(
+            f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
+            unsafe_allow_html=True
+        )
+        nav_left, nav_right = st.columns(2)
+        with nav_left:
             if st.session_state.card_index > 0:
-                if st.button("Previous"):
+                if st.button("Previous", key="prev_btn"):
                     st.session_state.card_index -= 1
-        with nav2:
+                    st.rerun()
+        with nav_right:
             if st.session_state.card_index < len(filtered_df) - 1:
-                if st.button("Next"):
+                if st.button("Next", key="next_btn"):
                     st.session_state.card_index += 1
-
+                    st.rerun()
         df.to_csv(DATA_FILE, index=False)
-
+    
+    # Download buttons at the bottom (styled as buttons)
     st.markdown("---")
-    colA, colB = st.columns([1, 1])
-    with colA:
+    down_col1, down_col2 = st.columns(2)
+    with down_col1:
         if os.path.exists(DATA_FILE):
             st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
-    with colB:
+    with down_col2:
         if os.path.exists(DOCX_FILE):
             st.markdown(download_button(DOCX_FILE, "Download DOCX"), unsafe_allow_html=True)
+    
+    # "Back to Upload" button
+    if st.button("Back to Upload", key="back_upload"):
+        st.session_state.page = "upload"
+        st.rerun()
