@@ -101,6 +101,10 @@ def download_button(file_path, label):
 DATA_FILE = "voice_demo_tracker_template.csv"
 DOCX_FILE = "voice_demo_scripts_mock.docx"
 
+# ---------- Refresh Function for Checkbox Changes ----------
+def refresh():
+    st.rerun()
+
 # ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
@@ -108,14 +112,13 @@ if "page" not in st.session_state:
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
     st.header("Upload Files")
-    # Show "Load Saved Progress" only if CSV exists and is non-empty
+    # Show "Load Saved Progress" only if a non-empty CSV exists
     if os.path.exists(DATA_FILE):
         try:
             df_test = pd.read_csv(DATA_FILE)
             if not df_test.empty:
                 if st.button("Load Saved Progress"):
                     st.session_state.page = "tracker"
-                    st.session_state.clear()
                     st.rerun()
         except:
             pass
@@ -131,7 +134,7 @@ if st.session_state.page == "upload":
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
-    # No download buttons here.
+    # No download buttons on the Upload page.
     if st.button("Next"):
         st.session_state.page = "tracker"
         st.rerun()
@@ -145,7 +148,7 @@ elif st.session_state.page == "tracker":
     df = pd.read_csv(DATA_FILE)
     scripts = load_docx(DOCX_FILE)
     
-    # Top Progress Tracker (small font)
+    # Top Progress Tracker (counters recalc on each run)
     total = len(df)
     recorded_count = df["Recorded"].sum()
     written_count = df["Script Written"].sum()
@@ -156,7 +159,7 @@ elif st.session_state.page == "tracker":
     col3.metric("Uploaded", f"{uploaded_count}/{total}")
     st.progress(recorded_count / total)
     
-    # View Mode selection with a unique key
+    # Unique key for view mode radio
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
     
     if view_mode == "Spreadsheet View":
@@ -164,7 +167,7 @@ elif st.session_state.page == "tracker":
     else:
         if "card_index" not in st.session_state:
             st.session_state.card_index = 0
-        filtered_df = df  # (You can add filters here if desired)
+        filtered_df = df  # (You can add filtering here if desired)
         if st.session_state.card_index >= len(filtered_df):
             st.session_state.card_index = 0
         row = filtered_df.iloc[st.session_state.card_index]
@@ -178,9 +181,9 @@ elif st.session_state.page == "tracker":
             unsafe_allow_html=True
         )
         colA, colB, colC = st.columns(3)
-        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}")
-        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}")
-        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}")
+        df.at[row.name, "Script Written"] = colA.checkbox("Script Written", row["Script Written"], key=f"sw_{row.name}", on_change=refresh)
+        df.at[row.name, "Recorded"] = colB.checkbox("Recorded", row["Recorded"], key=f"rec_{row.name}", on_change=refresh)
+        df.at[row.name, "Uploaded"] = colC.checkbox("Uploaded", row["Uploaded"], key=f"up_{row.name}", on_change=refresh)
         st.markdown(
             f"<div class='script-box'>{scripts.get(row['ID'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
@@ -198,7 +201,7 @@ elif st.session_state.page == "tracker":
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
-    # Download buttons at the bottom (styled as buttons)
+    # Download buttons (only on Tracker page, at bottom)
     st.markdown("---")
     down_col1, down_col2 = st.columns(2)
     with down_col1:
