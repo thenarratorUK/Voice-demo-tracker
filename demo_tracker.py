@@ -115,41 +115,38 @@ if "page" not in st.session_state:
 def refresh():
     st.rerun()
 
-# ---------- File Upload Page ----------
-if st.session_state.page == "Upload":
-    st.title("Upload Your Files")
+# ---------- Upload Page ----------
+if st.session_state.page == "upload":
+    st.header("Upload Files")
+    # Only show "Load Saved Progress" if a non-empty CSV exists
+    if os.path.exists(DATA_FILE):
+        try:
+            df_test = pd.read_csv(DATA_FILE)
+            if not df_test.empty:
+                if st.button("Load Saved Progress", key="load_progress"):
+                    st.session_state.page = "tracker"
+                    st.rerun()
+        except Exception:
+            pass
 
-    uploaded_csv = st.file_uploader("Upload your voice demo tracker CSV", type="csv", key="csv_upload")
-    uploaded_docx = st.file_uploader("Upload your voice demo scripts DOCX", type="docx", key="docx_upload")
-
-    if os.path.exists("saved_progress.csv"):
-        if st.button("Load Saved Progress"):
-            st.session_state["df"] = pd.read_csv("saved_progress.csv")
-            st.success("Progress loaded successfully!")
-            st.session_state["page"] = "Tracker"
-            st.rerun()
-
-    if uploaded_csv and uploaded_docx:
-        # Save the uploaded files
-        with open("uploaded_data.csv", "wb") as f:
+    uploaded_csv = st.file_uploader("Upload CSV", type=["csv"], key="upload_csv")
+    uploaded_docx = st.file_uploader("Upload DOCX", type=["docx"], key="upload_docx")
+    if uploaded_csv is not None:
+        with open(DATA_FILE, "wb") as f:
             f.write(uploaded_csv.read())
-        with open("uploaded_scripts.docx", "wb") as f:
+        st.success("CSV uploaded and saved.")
+    if uploaded_docx is not None:
+        with open(DOCX_FILE, "wb") as f:
             f.write(uploaded_docx.read())
+        st.success("DOCX uploaded and saved.")
 
-        # Clear any previously loaded session state
-        for key in ["df", "script_data", "filtered_cards", "card_index"]:
-            if key in st.session_state:
-                del st.session_state[key]
-
-        # Store the filenames in session state
-        st.session_state["uploaded_csv"] = "uploaded_data.csv"
-        st.session_state["uploaded_docx"] = "uploaded_scripts.docx"
-        st.session_state["page"] = "Tracker"
-
-        st.success("Files uploaded! Click 'Next' to continue.")
-        st.rerun()
+    # Only show "Next" button if both files exist
+    if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
+        if st.button("Next", key="next_upload"):
+            st.session_state.page = "tracker"
+            st.rerun()
     else:
-        st.warning("Please upload both a CSV and DOCX file to continue.")
+        st.warning("Please upload both CSV and DOCX files to continue.")
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
