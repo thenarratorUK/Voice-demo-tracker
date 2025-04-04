@@ -170,7 +170,6 @@ if st.session_state.page == "upload":
     # Only show "Next" if both files exist.
     if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
         if st.button("Next", key="next_upload"):
-            # On transition, update display_id from current_id if available.
             if st.session_state.current_id is not None:
                 st.session_state.display_id = st.session_state.current_id
             st.session_state.page = "tracker"
@@ -203,10 +202,6 @@ elif st.session_state.page == "tracker":
         st.session_state.display_id = df.iloc[0]["ID"]
         st.session_state.current_id = df.iloc[0]["ID"]
     
-    # ---------- Debug Output (Optional) ----------
-    # Uncomment the lines below to see session state details during debugging.
-    # st.write("DEBUG: Session State", st.session_state)
-    
     # Top Progress Tracker: Show the Recorded counter.
     total = len(df)
     recorded_count = df["Recorded"].sum()
@@ -223,11 +218,18 @@ elif st.session_state.page == "tracker":
         if not st.session_state["show_full_table"]:
             # Build a list of unique IDs from the CSV.
             id_list = df["ID"].dropna().unique().tolist()
+            # Define a custom format function to display "Category: Title"
+            def format_card(id_value):
+                # Find the row corresponding to the id_value.
+                row = df[df["ID"] == id_value].iloc[0]
+                # Return the concatenated string: "Category: Title"
+                return f"{row['Category']}: {row['Voice123 Upload Name']}"
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
                 id_list,
                 index=id_list.index(st.session_state.display_id) if st.session_state.display_id in id_list else 0,
-                key="card_selector"
+                key="card_selector",
+                format_func=format_card
             )
             # If a different ID is chosen, update current_id, display_id, and card_index.
             if selected_id != st.session_state.display_id:
