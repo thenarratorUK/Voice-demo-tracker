@@ -115,43 +115,41 @@ if "page" not in st.session_state:
 def refresh():
     st.rerun()
 
-# ---------- Upload Page ----------
 # ---------- File Upload Page ----------
-st.title("Upload Your Files")
+if st.session_state.page == "Upload":
+    st.title("Upload Your Files")
 
-# File upload
-uploaded_csv = st.file_uploader("Upload your voice demo tracker CSV", type="csv", key="csv_upload")
-uploaded_docx = st.file_uploader("Upload your voice demo scripts DOCX", type="docx", key="docx_upload")
+    uploaded_csv = st.file_uploader("Upload your voice demo tracker CSV", type="csv", key="csv_upload")
+    uploaded_docx = st.file_uploader("Upload your voice demo scripts DOCX", type="docx", key="docx_upload")
 
-# Load progress save button only if saved file exists
-if os.path.exists("saved_progress.csv"):
-    if st.button("Load Saved Progress"):
-        st.session_state["df"] = pd.read_csv("saved_progress.csv")
-        st.success("Progress loaded successfully!")
+    if os.path.exists("saved_progress.csv"):
+        if st.button("Load Saved Progress"):
+            st.session_state["df"] = pd.read_csv("saved_progress.csv")
+            st.success("Progress loaded successfully!")
+            st.session_state["page"] = "Tracker"
+            st.rerun()
+
+    if uploaded_csv and uploaded_docx:
+        # Save the uploaded files
+        with open("uploaded_data.csv", "wb") as f:
+            f.write(uploaded_csv.read())
+        with open("uploaded_scripts.docx", "wb") as f:
+            f.write(uploaded_docx.read())
+
+        # Clear any previously loaded session state
+        for key in ["df", "script_data", "filtered_cards", "card_index"]:
+            if key in st.session_state:
+                del st.session_state[key]
+
+        # Store the filenames in session state
+        st.session_state["uploaded_csv"] = "uploaded_data.csv"
+        st.session_state["uploaded_docx"] = "uploaded_scripts.docx"
         st.session_state["page"] = "Tracker"
+
+        st.success("Files uploaded! Click 'Next' to continue.")
         st.rerun()
-
-# Upload and process files
-if uploaded_csv and uploaded_docx:
-    # Save uploaded files
-    with open("uploaded_data.csv", "wb") as f:
-        f.write(uploaded_csv.read())
-    with open("uploaded_scripts.docx", "wb") as f:
-        f.write(uploaded_docx.read())
-
-    # Clear session state to ensure fresh reload
-    for key in ["df", "script_data", "filtered_cards", "card_index"]:
-        if key in st.session_state:
-            del st.session_state[key]
-
-    # Set flags and rerun
-    st.session_state["uploaded_csv"] = "uploaded_data.csv"
-    st.session_state["uploaded_docx"] = "uploaded_scripts.docx"
-    st.session_state["page"] = "Tracker"
-    st.success("Files uploaded! Click 'Next' to continue.")
-    st.rerun()
-else:
-    st.warning("Please upload both a CSV and DOCX file to continue.")
+    else:
+        st.warning("Please upload both a CSV and DOCX file to continue.")
 
 # ---------- Tracker Page ----------
 elif st.session_state.page == "tracker":
