@@ -77,8 +77,8 @@ div.stButton > button:hover {
 """, unsafe_allow_html=True)
 
 # ---------- Helper Functions ----------
-@st.cache_data
 def load_docx(path):
+    """Load and parse a DOCX file into a dictionary of script content."""
     doc = Document(path)
     scripts = {}
     current_heading = None
@@ -165,29 +165,28 @@ elif st.session_state.page == "tracker":
     
     # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
-
-# Safely show card selector dropdown after view toggle
-if "show_full_table" not in st.session_state:
-    st.session_state["show_full_table"] = False
-
-if view_mode == "Card View" and not st.session_state["show_full_table"]:
-    script_filenames = df["Script Filename"].dropna().unique().tolist()
-
-    current_index = st.session_state.get("card_index", 0)
-    current_script = df.iloc[current_index]["Script Filename"] if current_index < len(df) else None
-
-    selected_script = st.selectbox("Jump to script:", script_filenames, index=script_filenames.index(current_script) if current_script in script_filenames else 0, key="card_selector")
-
-    # Only update card_index if the user chose a different script
-    if selected_script != current_script:
-        new_index = df[df["Script Filename"] == selected_script].index[0]
-        st.session_state["card_index"] = new_index
-
-
     
-    if view_mode == "Spreadsheet View":
-        st.dataframe(df, use_container_width=True)
-    else:
+    if view_mode == "Card View":
+        # ---------- BEGIN CARD SELECTOR ----------
+        if "show_full_table" not in st.session_state:
+            st.session_state["show_full_table"] = False
+        if not st.session_state["show_full_table"]:
+            script_filenames = df["Script Filename"].dropna().unique().tolist()
+            current_index = st.session_state.get("card_index", 0)
+            current_script = df.iloc[current_index]["Script Filename"] if current_index < len(df) else None
+            selected_script = st.selectbox(
+                "Jump to script:",
+                script_filenames,
+                index=script_filenames.index(current_script) if current_script in script_filenames else 0,
+                key="card_selector"
+            )
+            # Only update card_index if a new script is selected
+            if selected_script != current_script:
+                new_index = df[df["Script Filename"] == selected_script].index[0]
+                st.session_state["card_index"] = new_index
+        # ---------- END CARD SELECTOR ----------
+    
+        # ---------- Card View Display ----------
         if "card_index" not in st.session_state:
             st.session_state.card_index = 0
         filtered_df = df  # (Add filtering if desired)
@@ -232,6 +231,9 @@ if view_mode == "Card View" and not st.session_state["show_full_table"]:
                     st.session_state.card_index += 1
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
+    
+    elif view_mode == "Spreadsheet View":
+        st.dataframe(df, use_container_width=True)
     
     # Download button for CSV only (styled as a button) at the bottom
     st.markdown("---")
