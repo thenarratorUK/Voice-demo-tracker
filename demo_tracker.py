@@ -110,6 +110,10 @@ DOCX_FILE = "voice_demo_scripts_mock.docx"
 # ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
+# Do not reset card_index if it already exists, so we can return to the same card later.
+# (It will default to 0 only if it’s never been set.)
+if "card_index" not in st.session_state:
+    st.session_state.card_index = 0
 
 # ---------- Refresh Function ----------
 def refresh():
@@ -155,9 +159,10 @@ elif st.session_state.page == "tracker":
         st.stop()
     
     df = pd.read_csv(DATA_FILE)
+    # Reload DOCX every time so any updates are reflected
     scripts = load_docx(DOCX_FILE)
     
-    # Top Progress Tracker: Only show the Recorded counter now.
+    # Top Progress Tracker: Show the Recorded counter.
     total = len(df)
     recorded_count = df["Recorded"].sum()
     st.metric("Recorded", f"{recorded_count}/{total}")
@@ -172,27 +177,29 @@ elif st.session_state.page == "tracker":
             st.session_state["show_full_table"] = False
         if not st.session_state["show_full_table"]:
             script_filenames = df["Script Filename"].dropna().unique().tolist()
-            current_index = st.session_state.get("card_index", 0)
-            current_script = df.iloc[current_index]["Script Filename"] if current_index < len(df) else None
+            # Use the existing card_index (defaults to 0 if not set)
+            card_index = st.session_state.get("card_index", 0)
+            current_script = df.iloc[card_index]["Script Filename"] if card_index < len(df) else None
             selected_script = st.selectbox(
                 "Jump to script:",
                 script_filenames,
                 index=script_filenames.index(current_script) if current_script in script_filenames else 0,
                 key="card_selector"
             )
-            # Only update card_index if a new script is selected
+            # Update card_index only if a different script is selected
             if selected_script != current_script:
                 new_index = df[df["Script Filename"] == selected_script].index[0]
                 st.session_state["card_index"] = new_index
         # ---------- END CARD SELECTOR ----------
     
         # ---------- Card View Display ----------
-        if "card_index" not in st.session_state:
-            st.session_state.card_index = 0
+        # Retrieve card_index from session_state (or default to 0)
+        card_index = st.session_state.get("card_index", 0)
         filtered_df = df  # (Add filtering if desired)
-        if st.session_state.card_index >= len(filtered_df):
-            st.session_state.card_index = 0
-        row = filtered_df.iloc[st.session_state.card_index]
+        if card_index >= len(filtered_df):
+            card_index = 0
+            st.session_state["card_index"] = 0
+        row = filtered_df.iloc[card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
         st.markdown(
             f"<div class='info-block'><b>Accent:</b> {row['Accent']}<br>"
@@ -221,14 +228,14 @@ elif st.session_state.page == "tracker":
     
         nav_left, nav_right = st.columns(2)
         with nav_left:
-            if st.session_state.card_index > 0:
+            if card_index > 0:
                 if st.button("Previous", key="prev_btn"):
-                    st.session_state.card_index -= 1
+                    st.session_state["card_index"] = card_index - 1
                     st.rerun()
         with nav_right:
-            if st.session_state.card_index < len(filtered_df) - 1:
+            if card_index < len(filtered_df) - 1:
                 if st.button("Next", key="next_btn"):
-                    st.session_state.card_index += 1
+                    st.session_state["card_index"] = card_index + 1
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
