@@ -110,7 +110,7 @@ DOCX_FILE = "voice_demo_scripts_mock.docx"
 # ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
-# We'll store the current script filename as well as the numeric card_index.
+# Preserve progress if it exists; otherwise initialize.
 if "card_index" not in st.session_state:
     st.session_state.card_index = 0
 if "current_script" not in st.session_state:
@@ -123,7 +123,7 @@ def refresh():
 # ---------- Upload Page ----------
 if st.session_state.page == "upload":
     st.header("Upload Files")
-    # Only show "Load Saved Progress" if a non-empty CSV exists
+    # Show "Load Saved Progress" if a non-empty CSV exists.
     if os.path.exists(DATA_FILE):
         try:
             df_test = pd.read_csv(DATA_FILE)
@@ -145,7 +145,7 @@ if st.session_state.page == "upload":
             f.write(uploaded_docx.read())
         st.success("DOCX uploaded and saved.")
 
-    # Only show "Next" button if both files exist
+    # Only show "Next" if both files exist.
     if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
         if st.button("Next", key="next_upload"):
             st.session_state.page = "tracker"
@@ -160,15 +160,12 @@ elif st.session_state.page == "tracker":
         st.stop()
     
     df = pd.read_csv(DATA_FILE)
-    # Reload DOCX every time so any updates are reflected
+    # Reload DOCX every time so updates are reflected.
     scripts = load_docx(DOCX_FILE)
     
-    # If a current_script is stored, update the card_index accordingly.
-    if st.session_state.current_script in df["Script Filename"].values:
-        st.session_state.card_index = int(df[df["Script Filename"] == st.session_state.current_script].index[0])
-    # Otherwise, if card_index hasn't been set, default to 0.
-    elif "card_index" not in st.session_state:
-        st.session_state.card_index = 0
+    # If current_script is not set, initialize it using the existing card_index.
+    if st.session_state.current_script is None:
+        st.session_state.current_script = df.iloc[st.session_state.card_index]["Script Filename"]
     
     # Top Progress Tracker: Show the Recorded counter.
     total = len(df)
@@ -176,7 +173,7 @@ elif st.session_state.page == "tracker":
     st.metric("Recorded", f"{recorded_count}/{total}")
     st.progress(recorded_count / total)
     
-    # View Mode selection with unique key
+    # View Mode selection
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
     
     if view_mode == "Card View":
@@ -185,8 +182,8 @@ elif st.session_state.page == "tracker":
             st.session_state["show_full_table"] = False
         if not st.session_state["show_full_table"]:
             script_filenames = df["Script Filename"].dropna().unique().tolist()
-            # Use the existing card_index (which may have been set based on current_script)
-            card_index = st.session_state.get("card_index", 0)
+            # Use the existing card_index.
+            card_index = st.session_state.card_index
             current_script = df.iloc[card_index]["Script Filename"] if card_index < len(df) else None
             selected_script = st.selectbox(
                 "Jump to script:",
@@ -197,16 +194,16 @@ elif st.session_state.page == "tracker":
             # If a different script is chosen, update both card_index and current_script.
             if selected_script != current_script:
                 new_index = int(df[df["Script Filename"] == selected_script].index[0])
-                st.session_state["card_index"] = new_index
-                st.session_state["current_script"] = selected_script
+                st.session_state.card_index = new_index
+                st.session_state.current_script = selected_script
         # ---------- END CARD SELECTOR ----------
     
         # ---------- Card View Display ----------
-        card_index = st.session_state.get("card_index", 0)
+        card_index = st.session_state.card_index
         filtered_df = df  # (Add filtering if desired)
         if card_index >= len(filtered_df):
             card_index = 0
-            st.session_state["card_index"] = 0
+            st.session_state.card_index = 0
         row = filtered_df.iloc[card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
         st.markdown(
@@ -217,10 +214,10 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        # Update the current_script to the displayed card’s script filename
-        st.session_state["current_script"] = row["Script Filename"]
+        # Update current_script to the currently displayed card.
+        st.session_state.current_script = row["Script Filename"]
     
-        # Toggle Recorded button
+        # Toggle Recorded button.
         if not row["Recorded"]:
             if st.button("Mark as Recorded", key=f"record_btn_{row.name}"):
                 df.at[row.name, "Recorded"] = True
@@ -241,23 +238,23 @@ elif st.session_state.page == "tracker":
         with nav_left:
             if card_index > 0:
                 if st.button("Previous", key="prev_btn"):
-                    st.session_state["card_index"] = card_index - 1
-                    st.rerun()
+                    st.session_state.card_index = card_index - 1
+                    refresh()
         with nav_right:
             if card_index < len(filtered_df) - 1:
                 if st.button("Next", key="next_btn"):
-                    st.session_state["card_index"] = card_index + 1
-                    st.rerun()
+                    st.session_state.card_index = card_index + 1
+                    refresh()
         df.to_csv(DATA_FILE, index=False)
     
     elif view_mode == "Spreadsheet View":
         st.dataframe(df, use_container_width=True)
     
-    # Download button for CSV only (styled as a button) at the bottom
+    # Download button for CSV at the bottom.
     st.markdown("---")
     st.markdown(download_button(DATA_FILE, "Download CSV"), unsafe_allow_html=True)
     
-    # "Back to Upload" button
+    # "Back to Upload" button.
     if st.button("Back to Upload", key="back_upload"):
         st.session_state.page = "upload"
         st.rerun()
