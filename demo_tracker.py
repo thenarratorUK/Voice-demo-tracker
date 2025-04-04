@@ -114,7 +114,6 @@ if "page" not in st.session_state:
 if "card_index" not in st.session_state:
     st.session_state.card_index = 0
 if "current_id" not in st.session_state:
-    # We'll initialize current_id once the Tracker page loads.
     st.session_state.current_id = None
 
 # ---------- Refresh Function ----------
@@ -196,7 +195,7 @@ elif st.session_state.page == "tracker":
                 new_index = int(df[df["ID"] == selected_id].index[0])
                 st.session_state.card_index = new_index
                 st.session_state.current_id = selected_id
-                st.experimental_rerun()
+                st.rerun()
         # ---------- END CARD SELECTOR ----------
     
         # ---------- Card View Display ----------
@@ -241,13 +240,13 @@ elif st.session_state.page == "tracker":
                 if st.button("Previous", key="prev_btn"):
                     st.session_state.card_index = card_index - 1
                     st.session_state.current_id = df.iloc[card_index - 1]["ID"]
-                    st.experimental_rerun()
+                    st.rerun()
         with nav_right:
             if card_index < len(filtered_df) - 1:
                 if st.button("Next", key="next_btn"):
                     st.session_state.card_index = card_index + 1
                     st.session_state.current_id = df.iloc[card_index + 1]["ID"]
-                    st.experimental_rerun()
+                    st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
     elif view_mode == "Spreadsheet View":
