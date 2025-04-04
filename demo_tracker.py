@@ -3,6 +3,7 @@ import pandas as pd
 from docx import Document
 import os
 import base64
+import json
 
 st.set_page_config(page_title="Voice Demo Tracker", layout="wide")
 
@@ -103,6 +104,25 @@ def download_button(file_path, label):
         b64 = base64.b64encode(f.read()).decode()
     return f'<a href="data:application/octet-stream;base64,{b64}" download="{os.path.basename(file_path)}" class="download-button">{label}</a>'
 
+# ---------- Progress Persistence ----------
+PROGRESS_FILE = "progress_temp.json"
+
+def auto_save_progress():
+    progress = {
+        "current_id": st.session_state.get("current_id"),
+        "card_index": st.session_state.get("card_index")
+    }
+    with open(PROGRESS_FILE, "w") as f:
+        json.dump(progress, f)
+
+def auto_load_progress():
+    if os.path.exists(PROGRESS_FILE):
+        with open(PROGRESS_FILE, "r") as f:
+            progress = json.load(f)
+        st.session_state.current_id = progress.get("current_id")
+        st.session_state.card_index = progress.get("card_index", 0)
+        st.session_state.display_id = st.session_state.current_id
+
 # ---------- File Paths ----------
 DATA_FILE = "voice_demo_tracker_template.csv"
 DOCX_FILE = "voice_demo_scripts_mock.docx"
@@ -112,10 +132,8 @@ if "page" not in st.session_state:
     st.session_state.page = "upload"
 if "card_index" not in st.session_state:
     st.session_state.card_index = 0
-# current_id: last card you worked on.
 if "current_id" not in st.session_state:
     st.session_state.current_id = None
-# display_id: the card that will be shown on load.
 if "display_id" not in st.session_state:
     st.session_state.display_id = None
 
@@ -132,10 +150,8 @@ if st.session_state.page == "upload":
             df_test = pd.read_csv(DATA_FILE)
             if not df_test.empty:
                 if st.button("Load Saved Progress", key="load_progress"):
+                    auto_load_progress()
                     st.session_state.page = "tracker"
-                    # On load saved progress, update display_id from current_id if available.
-                    if st.session_state.current_id is not None:
-                        st.session_state.display_id = st.session_state.current_id
                     st.rerun()
         except Exception:
             pass
@@ -154,10 +170,10 @@ if st.session_state.page == "upload":
     # Only show "Next" if both files exist.
     if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
         if st.button("Next", key="next_upload"):
-            st.session_state.page = "tracker"
             # On transition, update display_id from current_id if available.
             if st.session_state.current_id is not None:
                 st.session_state.display_id = st.session_state.current_id
+            st.session_state.page = "tracker"
             st.rerun()
     else:
         st.warning("Please upload both CSV and DOCX files to continue.")
@@ -171,21 +187,14 @@ elif st.session_state.page == "tracker":
     df = pd.read_csv(DATA_FILE)
     # Reload DOCX every time so updates are reflected.
     scripts = load_docx(DOCX_FILE)
-
-    # DEBUG: Show session state before any processing.
-    st.write("DEBUG: Initial Session State", st.session_state)
     
-    # Initialize current_id if not set.
+    # If no progress has been loaded, initialize using the current card_index.
     if st.session_state.current_id is None:
         st.session_state.current_id = df.iloc[st.session_state.card_index]["ID"]
-    # Initialize display_id if not set.
     if st.session_state.display_id is None:
         st.session_state.display_id = st.session_state.current_id
 
-    # DEBUG: Show session state after initialization.
-    st.write("DEBUG: Session State after init", st.session_state)
-    
-    # Determine the card_index corresponding to display_id.
+    # Ensure that display_id corresponds to a valid card.
     matching_rows = df[df["ID"] == st.session_state.display_id]
     if not matching_rows.empty:
         st.session_state.card_index = int(matching_rows.index[0])
@@ -194,8 +203,9 @@ elif st.session_state.page == "tracker":
         st.session_state.display_id = df.iloc[0]["ID"]
         st.session_state.current_id = df.iloc[0]["ID"]
     
-    # DEBUG: Show session state after matching display_id.
-    st.write("DEBUG: Session State after matching display_id", st.session_state)
+    # ---------- Debug Output (Optional) ----------
+    # Uncomment the lines below to see session state details during debugging.
+    # st.write("DEBUG: Session State", st.session_state)
     
     # Top Progress Tracker: Show the Recorded counter.
     total = len(df)
@@ -219,12 +229,13 @@ elif st.session_state.page == "tracker":
                 index=id_list.index(st.session_state.display_id) if st.session_state.display_id in id_list else 0,
                 key="card_selector"
             )
-            # If a different ID is chosen, update both current_id and display_id and update card_index.
+            # If a different ID is chosen, update current_id, display_id, and card_index.
             if selected_id != st.session_state.display_id:
                 new_index = int(df[df["ID"] == selected_id].index[0])
                 st.session_state.card_index = new_index
                 st.session_state.current_id = selected_id
                 st.session_state.display_id = selected_id
+                auto_save_progress()
                 st.rerun()
         # ---------- END CARD SELECTOR ----------
     
@@ -249,17 +260,20 @@ elif st.session_state.page == "tracker":
         # Update both current_id and display_id to the currently displayed card.
         st.session_state.current_id = row["ID"]
         st.session_state.display_id = row["ID"]
-    
+        auto_save_progress()
+
         # Toggle Recorded button.
         if not row["Recorded"]:
             if st.button("Mark as Recorded", key=f"record_btn_{row.name}"):
                 df.at[row.name, "Recorded"] = True
                 df.to_csv(DATA_FILE, index=False)
+                auto_save_progress()
                 refresh()
         else:
             if st.button("Mark as Not Recorded", key=f"unrecord_btn_{row.name}"):
                 df.at[row.name, "Recorded"] = False
                 df.to_csv(DATA_FILE, index=False)
+                auto_save_progress()
                 refresh()
     
         st.markdown(
@@ -274,6 +288,7 @@ elif st.session_state.page == "tracker":
                     st.session_state.card_index = card_index - 1
                     st.session_state.current_id = df.iloc[card_index - 1]["ID"]
                     st.session_state.display_id = df.iloc[card_index - 1]["ID"]
+                    auto_save_progress()
                     st.rerun()
         with nav_right:
             if card_index < len(filtered_df) - 1:
@@ -281,6 +296,7 @@ elif st.session_state.page == "tracker":
                     st.session_state.card_index = card_index + 1
                     st.session_state.current_id = df.iloc[card_index + 1]["ID"]
                     st.session_state.display_id = df.iloc[card_index + 1]["ID"]
+                    auto_save_progress()
                     st.rerun()
         df.to_csv(DATA_FILE, index=False)
     
