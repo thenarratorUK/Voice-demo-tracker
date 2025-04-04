@@ -165,6 +165,17 @@ elif st.session_state.page == "tracker":
     
     # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
+
+# Show card selector dropdown just below view toggle
+if view_mode == "Card View" and not show_full_table:
+    script_filenames = df["Script Filename"].dropna().unique().tolist()
+    selected_script = st.selectbox("Jump to script:", script_filenames, key="card_selector")
+
+    # Find the index of the selected card
+    matching_index = df[df["Script Filename"] == selected_script].index[0]
+    st.session_state["card_index"] = matching_index
+
+
     
     if view_mode == "Spreadsheet View":
         st.dataframe(df, use_container_width=True)
