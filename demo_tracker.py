@@ -110,11 +110,12 @@ DOCX_FILE = "voice_demo_scripts_mock.docx"
 # ---------- Session State for Navigation ----------
 if "page" not in st.session_state:
     st.session_state.page = "upload"
-# Preserve progress if it exists; otherwise initialize.
+# Use card_index for Next/Previous navigation.
 if "card_index" not in st.session_state:
     st.session_state.card_index = 0
-if "current_script" not in st.session_state:
-    st.session_state.current_script = None
+# Use current_id to store the unique ID of the current card.
+if "current_id" not in st.session_state:
+    st.session_state.current_id = None
 
 # ---------- Refresh Function ----------
 def refresh():
@@ -163,9 +164,14 @@ elif st.session_state.page == "tracker":
     # Reload DOCX every time so updates are reflected.
     scripts = load_docx(DOCX_FILE)
     
-    # If current_script is not set, initialize it using the existing card_index.
-    if st.session_state.current_script is None:
-        st.session_state.current_script = df.iloc[st.session_state.card_index]["Script Filename"]
+    # If a current_id is stored, set card_index based on it.
+    if st.session_state.current_id is not None:
+        matching_rows = df[df["ID"] == st.session_state.current_id]
+        if not matching_rows.empty:
+            st.session_state.card_index = int(matching_rows.index[0])
+    # Otherwise, initialize current_id from the current card.
+    else:
+        st.session_state.current_id = df.iloc[st.session_state.card_index]["ID"]
     
     # Top Progress Tracker: Show the Recorded counter.
     total = len(df)
@@ -181,21 +187,22 @@ elif st.session_state.page == "tracker":
         if "show_full_table" not in st.session_state:
             st.session_state["show_full_table"] = False
         if not st.session_state["show_full_table"]:
-            script_filenames = df["Script Filename"].dropna().unique().tolist()
-            # Use the existing card_index.
+            # Build a list of unique IDs from the CSV.
+            id_list = df["ID"].dropna().unique().tolist()
+            # Use the existing card_index to determine the current ID.
             card_index = st.session_state.card_index
-            current_script = df.iloc[card_index]["Script Filename"] if card_index < len(df) else None
-            selected_script = st.selectbox(
-                "Jump to script:",
-                script_filenames,
-                index=script_filenames.index(current_script) if current_script in script_filenames else 0,
+            current_id = df.iloc[card_index]["ID"] if card_index < len(df) else None
+            selected_id = st.selectbox(
+                "Jump to card (by ID):",
+                id_list,
+                index=id_list.index(current_id) if current_id in id_list else 0,
                 key="card_selector"
             )
-            # If a different script is chosen, update both card_index and current_script.
-            if selected_script != current_script:
-                new_index = int(df[df["Script Filename"] == selected_script].index[0])
+            # If a different ID is chosen, update both card_index and current_id.
+            if selected_id != current_id:
+                new_index = int(df[df["ID"] == selected_id].index[0])
                 st.session_state.card_index = new_index
-                st.session_state.current_script = selected_script
+                st.session_state.current_id = selected_id
         # ---------- END CARD SELECTOR ----------
     
         # ---------- Card View Display ----------
@@ -214,8 +221,8 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        # Update current_script to the currently displayed card.
-        st.session_state.current_script = row["Script Filename"]
+        # Update current_id to the currently displayed card’s ID.
+        st.session_state.current_id = row["ID"]
     
         # Toggle Recorded button.
         if not row["Recorded"]:
@@ -239,11 +246,15 @@ elif st.session_state.page == "tracker":
             if card_index > 0:
                 if st.button("Previous", key="prev_btn"):
                     st.session_state.card_index = card_index - 1
+                    # Update current_id based on the new card_index.
+                    st.session_state.current_id = df.iloc[card_index - 1]["ID"]
                     refresh()
         with nav_right:
             if card_index < len(filtered_df) - 1:
                 if st.button("Next", key="next_btn"):
                     st.session_state.card_index = card_index + 1
+                    # Update current_id based on the new card_index.
+                    st.session_state.current_id = df.iloc[card_index + 1]["ID"]
                     refresh()
         df.to_csv(DATA_FILE, index=False)
     
