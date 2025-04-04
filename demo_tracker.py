@@ -166,8 +166,11 @@ elif st.session_state.page == "tracker":
     # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
 
-# Show card selector dropdown just below view toggle
-if view_mode == "Card View" and not show_full_table:
+# Safely show card selector dropdown after view toggle
+if "show_full_table" not in st.session_state:
+    st.session_state["show_full_table"] = False
+
+if view_mode == "Card View" and not st.session_state["show_full_table"]:
     script_filenames = df["Script Filename"].dropna().unique().tolist()
     selected_script = st.selectbox("Jump to script:", script_filenames, key="card_selector")
 
