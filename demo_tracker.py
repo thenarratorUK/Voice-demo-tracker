@@ -166,22 +166,22 @@ elif st.session_state.page == "tracker":
     # View Mode selection with unique key
     view_mode = st.radio("View Mode", ["Card View", "Spreadsheet View"], index=0, key="tracker_view_mode_unique")
 
-if st.session_state.get("page") == "Tracker" and "view_mode" in locals():
-    if "show_full_table" not in st.session_state:
-        st.session_state["show_full_table"] = False
+# Safely show card selector dropdown after view toggle
+if "show_full_table" not in st.session_state:
+    st.session_state["show_full_table"] = False
 
-    if view_mode == "Card View" and not st.session_state["show_full_table"]:
-        script_filenames = df["Script Filename"].dropna().unique().tolist()
+if view_mode == "Card View" and not st.session_state["show_full_table"]:
+    script_filenames = df["Script Filename"].dropna().unique().tolist()
 
-        current_index = st.session_state.get("card_index", 0)
-        current_script = df.iloc[current_index]["Script Filename"] if current_index < len(df) else None
+    current_index = st.session_state.get("card_index", 0)
+    current_script = df.iloc[current_index]["Script Filename"] if current_index < len(df) else None
 
-        selected_script = st.selectbox("Jump to script:", script_filenames, index=script_filenames.index(current_script) if current_script in script_filenames else 0, key="card_selector")
+    selected_script = st.selectbox("Jump to script:", script_filenames, index=script_filenames.index(current_script) if current_script in script_filenames else 0, key="card_selector")
 
-        # Only update card_index if the user chose a different script
-        if selected_script != current_script:
-            new_index = df[df["Script Filename"] == selected_script].index[0]
-            st.session_state["card_index"] = new_index
+    # Only update card_index if the user chose a different script
+    if selected_script != current_script:
+        new_index = df[df["Script Filename"] == selected_script].index[0]
+        st.session_state["card_index"] = new_index
 
 
     
