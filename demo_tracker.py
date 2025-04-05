@@ -83,11 +83,10 @@ st.markdown("""
     .custom-script {
         border: 1px solid #ccc;
         padding: 0.75rem;
-        background-color: #f9f9f9;
     }
     .custom-script p {
         margin-bottom: 0.3em;  /* Adjust spacing between paragraphs */
-        line-height: 1.3;      /* Approximates 1.15 line spacing in Word */
+        line-height: 1.15;     /* Adjust line spacing to your liking */
     }
     </style>
 """, unsafe_allow_html=True)
@@ -277,9 +276,18 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        # Display the script text using the custom CSS container.
+        # Determine box styling based on the Recorded status.
+        if row["Recorded"]:
+            box_bg = "#f9f9f9"  # Pale grey background for recorded scripts.
+            text_color = "#555555"  # Dark grey text.
+        else:
+            box_bg = "#ffffff"  # White background for not recorded scripts.
+            text_color = "#000000"  # Black text.
+        # Display the script text using the custom CSS container with inline style overrides.
         st.markdown(
-            f"<div class='custom-script'>{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}</div>",
+            f"<div class='custom-script' style='background-color: {box_bg}; color: {text_color};'>"
+            f"{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}"
+            f"</div>",
             unsafe_allow_html=True
         )
         # Update both current_id and display_id to the currently displayed card.
