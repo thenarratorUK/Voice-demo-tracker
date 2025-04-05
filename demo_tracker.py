@@ -80,6 +80,11 @@ div.stButton > button:hover {
 # ---------- Custom CSS for Script Display ----------
 st.markdown("""
     <style>
+    .custom-script {
+        border: 1px solid #ccc;
+        padding: 0.75rem;
+        background-color: #f9f9f9;
+    }
     .custom-script p {
         margin-bottom: 0.3em;  /* Adjust spacing between paragraphs */
         line-height: 1.4;      /* Approximates 1.15 line spacing in Word */
@@ -89,7 +94,8 @@ st.markdown("""
 
 # ---------- Helper Functions ----------
 def load_docx(path):
-    """Load and parse a DOCX file into a dictionary of script content."""
+    """Load and parse a DOCX file into a dictionary of script content.
+       Empty paragraphs are converted to a paragraph with a non-breaking space to create a visible gap."""
     doc = Document(path)
     scripts = {}
     current_heading = None
@@ -98,15 +104,19 @@ def load_docx(path):
             current_heading = para.text.strip()
             scripts[current_heading] = ""
         elif current_heading:
-            html_parts = []
-            for run in para.runs:
-                text = run.text.replace("<", "&lt;").replace(">", "&gt;")
-                if run.bold:
-                    text = f"<b>{text}</b>"
-                if run.italic:
-                    text = f"<i>{text}</i>"
-                html_parts.append(text)
-            scripts[current_heading] += "<p>" + "".join(html_parts) + "</p>"
+            if para.text.strip() == "":
+                # Add an empty paragraph that will render as a gap.
+                scripts[current_heading] += "<p>&nbsp;</p>"
+            else:
+                html_parts = []
+                for run in para.runs:
+                    text = run.text.replace("<", "&lt;").replace(">", "&gt;")
+                    if run.bold:
+                        text = f"<b>{text}</b>"
+                    if run.italic:
+                        text = f"<i>{text}</i>"
+                    html_parts.append(text)
+                scripts[current_heading] += "<p>" + "".join(html_parts) + "</p>"
     return scripts
 
 def download_button(file_path, label):
@@ -231,7 +241,6 @@ elif st.session_state.page == "tracker":
             # Define a custom format function to display "Category: Title"
             def format_card(id_value):
                 row = df[df["ID"] == id_value].iloc[0]
-                # Concatenate Category and Voice123 Upload Name as "Category: Title"
                 return f"{row['Category']}: {row['Voice123 Upload Name']}"
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
@@ -268,7 +277,7 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
-        # Display the script text using the custom CSS class.
+        # Display the script text using the custom CSS container.
         st.markdown(
             f"<div class='custom-script'>{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}</div>",
             unsafe_allow_html=True
