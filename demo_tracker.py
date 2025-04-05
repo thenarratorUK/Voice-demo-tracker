@@ -279,7 +279,7 @@ elif st.session_state.page == "tracker":
         # Determine box styling based on the Recorded status.
         if row["Recorded"]:
             box_bg = "#f9f9f9"  # Pale grey background for recorded scripts.
-            text_color = "#555555"  # Dark grey text.
+            text_color = "#888888"  # Dark grey text.
         else:
             box_bg = "#ffffff"  # White background for not recorded scripts.
             text_color = "#000000"  # Black text.
