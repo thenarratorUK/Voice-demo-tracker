@@ -87,7 +87,7 @@ st.markdown("""
     }
     .custom-script p {
         margin-bottom: 0.3em;  /* Adjust spacing between paragraphs */
-        line-height: 1.15;      /* Approximates 1.15 line spacing in Word */
+        line-height: 1.3;      /* Approximates 1.15 line spacing in Word */
     }
     </style>
 """, unsafe_allow_html=True)
