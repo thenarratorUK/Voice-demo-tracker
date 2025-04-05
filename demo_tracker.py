@@ -77,6 +77,16 @@ div.stButton > button:hover {
 </style>
 """, unsafe_allow_html=True)
 
+# ---------- Custom CSS for Script Display ----------
+st.markdown("""
+    <style>
+    .custom-script p {
+        margin-bottom: 0.3em;  /* Adjust spacing between paragraphs */
+        line-height: 1.4;      /* Approximates 1.15 line spacing in Word */
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ---------- Helper Functions ----------
 def load_docx(path):
     """Load and parse a DOCX file into a dictionary of script content."""
@@ -220,9 +230,8 @@ elif st.session_state.page == "tracker":
             id_list = df["ID"].dropna().unique().tolist()
             # Define a custom format function to display "Category: Title"
             def format_card(id_value):
-                # Find the row corresponding to the id_value.
                 row = df[df["ID"] == id_value].iloc[0]
-                # Return the concatenated string: "Category: Title"
+                # Concatenate Category and Voice123 Upload Name as "Category: Title"
                 return f"{row['Category']}: {row['Voice123 Upload Name']}"
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
@@ -259,6 +268,11 @@ elif st.session_state.page == "tracker":
             f"<b>Script File:</b> {row['Script Filename']}</div>",
             unsafe_allow_html=True
         )
+        # Display the script text using the custom CSS class.
+        st.markdown(
+            f"<div class='custom-script'>{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}</div>",
+            unsafe_allow_html=True
+        )
         # Update both current_id and display_id to the currently displayed card.
         st.session_state.current_id = row["ID"]
         st.session_state.display_id = row["ID"]
@@ -277,11 +291,6 @@ elif st.session_state.page == "tracker":
                 df.to_csv(DATA_FILE, index=False)
                 auto_save_progress()
                 refresh()
-    
-        st.markdown(
-            f"<div class='script-box'>{scripts.get(row['Script Filename'], '<i>Script not found.</i>')}</div>",
-            unsafe_allow_html=True
-        )
     
         nav_left, nav_right = st.columns(2)
         with nav_left:
