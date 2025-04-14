@@ -203,6 +203,13 @@ elif st.session_state.page == "tracker":
         st.stop()
     
     df = pd.read_csv(DATA_FILE)
+
+    # Set display_id to first unrecorded item at startup
+    if 'display_id' not in st.session_state:
+        id_list = df['ID'].dropna().unique().tolist()
+        unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
+        st.session_state.display_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
+
     # Reload DOCX every time so updates are reflected.
     scripts = load_docx(DOCX_FILE)
     
@@ -239,27 +246,12 @@ elif st.session_state.page == "tracker":
             id_list = df["ID"].dropna().unique().tolist()
             # Define a custom format function to display "Category: Title"
             def format_card(id_value):
-                row = df[df['ID'] == id_value].iloc[0]
-                recorded = row.get('Recorded', False)
-                prefix = '(Done) ' if recorded == True else ''
-                return f"{prefix}{row['Voice123 Upload Name']}"
-            # Determine the default selection index
-            if st.session_state.display_id in id_list:
-                default_index = id_list.index(st.session_state.display_id)
-            else:
-                unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
-                default_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
-                default_index = id_list.index(default_id)
-
-            # Set initial display_id if not already set
-            if 'display_id' not in st.session_state:
-                unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
-                st.session_state.display_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
-
+                row = df[df["ID"] == id_value].iloc[0]
+                return f"{row['Category']}: {row['Voice123 Upload Name']}"
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
                 id_list,
-                index=default_index,
+                index=id_list.index(st.session_state.display_id),
                 key="card_selector",
                 format_func=format_card
             )
