@@ -251,6 +251,11 @@ elif st.session_state.page == "tracker":
                 default_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
                 default_index = id_list.index(default_id)
 
+            # Set initial display_id if not already set
+            if 'display_id' not in st.session_state:
+                unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
+                st.session_state.display_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
+
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
                 id_list,
