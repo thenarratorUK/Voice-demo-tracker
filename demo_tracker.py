@@ -189,8 +189,19 @@ if st.session_state.page == "upload":
     # Only show "Next" if both files exist.
     if os.path.exists(DATA_FILE) and os.path.exists(DOCX_FILE):
         if st.button("Next", key="next_upload"):
-            if st.session_state.current_id is not None:
-                st.session_state.display_id = st.session_state.current_id
+            df = pd.read_csv(DATA_FILE)
+            # Filter the DataFrame for rows where "Recorded" is not True (i.e., unrecorded cards)
+            unrecorded_df = df[df["Recorded"] != True]
+            if not unrecorded_df.empty:
+                # Set card_index to the index of the first unrecorded row
+                st.session_state.card_index = unrecorded_df.index[0]
+                st.session_state.current_id = df.iloc[st.session_state.card_index]["ID"]
+            else:
+                # Fallback: if all cards are recorded, default to the first card
+                st.session_state.card_index = 0
+                st.session_state.current_id = df.iloc[0]["ID"]
+
+            st.session_state.display_id = st.session_state.current_id
             st.session_state.page = "tracker"
             st.rerun()
     else:
