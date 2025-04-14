@@ -242,9 +242,6 @@ elif st.session_state.page == "tracker":
                 recorded = row.get('Recorded', False)
                 prefix = '(Done) ' if recorded == True else ''
                 return f"{prefix}{row['Voice123 Upload Name']}"
-            selected_id = st.selectbox(
-                "Jump to card (by ID):",
-                id_list,
             # Determine the default selection index
             if st.session_state.display_id in id_list:
                 default_index = id_list.index(st.session_state.display_id)
@@ -252,6 +249,11 @@ elif st.session_state.page == "tracker":
                 unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
                 default_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
                 default_index = id_list.index(default_id)
+
+            selected_id = st.selectbox(
+                "Jump to card (by ID):",
+                id_list,
+                index=default_index,
                 key="card_selector",
                 format_func=format_card
             )
