@@ -218,9 +218,7 @@ elif st.session_state.page == "tracker":
         st.session_state.card_index = int(matching_rows.index[0])
     else:
         st.session_state.card_index = 0
-        id_list = df['ID'].dropna().unique().tolist()
-        unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
-        st.session_state.display_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
+        st.session_state.display_id = df.iloc[0]["ID"]
         st.session_state.current_id = df.iloc[0]["ID"]
     
     # Top Progress Tracker: Show the Recorded counter.
@@ -241,12 +239,22 @@ elif st.session_state.page == "tracker":
             id_list = df["ID"].dropna().unique().tolist()
             # Define a custom format function to display "Category: Title"
             def format_card(id_value):
-                row = df[df["ID"] == id_value].iloc[0]
-                return f"{row['Category']}: {row['Voice123 Upload Name']}"
+                row = df[df['ID'] == id_value].iloc[0]
+                recorded = row.get('Recorded', False)
+                prefix = '(Done) ' if recorded == True else ''
+                return f"{prefix}{row['Voice123 Upload Name']}"
+            # Determine the default selection index
+            if st.session_state.display_id in id_list:
+                default_index = id_list.index(st.session_state.display_id)
+            else:
+                unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
+                default_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
+                default_index = id_list.index(default_id)
+
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
                 id_list,
-                index=id_list.index(st.session_state.display_id) if st.session_state.display_id in id_list else 0,
+                index=default_index,
                 key="card_selector",
                 format_func=format_card
             )
@@ -267,9 +275,7 @@ elif st.session_state.page == "tracker":
             card_index = 0
             st.session_state.card_index = 0
             st.session_state.current_id = df.iloc[0]["ID"]
-            id_list = df['ID'].dropna().unique().tolist()
-            unrecorded_ids = df[df['Recorded'] != True]['ID'].tolist()
-            st.session_state.display_id = unrecorded_ids[0] if unrecorded_ids else id_list[0]
+            st.session_state.display_id = df.iloc[0]["ID"]
         row = filtered_df.iloc[card_index]
         st.markdown(f"### {row['Voice123 Upload Name']}")
         st.markdown(
