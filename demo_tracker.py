@@ -246,8 +246,10 @@ elif st.session_state.page == "tracker":
             id_list = df["ID"].dropna().unique().tolist()
             # Define a custom format function to display "Category: Title"
             def format_card(id_value):
-                row = df[df["ID"] == id_value].iloc[0]
-                return f"{row['Category']}: {row['Voice123 Upload Name']}"
+                row = df[df['ID'] == id_value].iloc[0]
+                recorded = row.get('Recorded', False)
+                prefix = '(Done) ' if recorded == True else ''
+                return f"{prefix}{row['Voice123 Upload Name']}"
             selected_id = st.selectbox(
                 "Jump to card (by ID):",
                 id_list,
